@@ -1,0 +1,14 @@
+{
+  "name": "ttjs",
+  "version": "1.0.0",
+  "description": "Terminal-based typing test application",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["typing", "test", "terminal", "wpm"],
+  "author": "",
+  "license": "MIT"
+}
+
