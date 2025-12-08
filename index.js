@@ -41,7 +41,7 @@ class TypingTest {
     this.clearScreen();
     
     console.log('\n╔════════════════════════════════════════════════════════════╗');
-    console.log('║              TYPING TEST - Type the sentence below        ║');
+    console.log('║              TYPING TEST - Type the sentence below         ║');
     console.log('╚════════════════════════════════════════════════════════════╝\n');
     
     console.log('Sentence to type:');
@@ -132,7 +132,7 @@ class TypingTest {
     const totalChars = this.userInput.length;
     
     console.log('\n╔════════════════════════════════════════════════════════════╗');
-    console.log('║                      TYPING TEST RESULTS                    ║');
+    console.log('║                      TYPING TEST RESULTS                   ║');
     console.log('╚════════════════════════════════════════════════════════════╝\n');
     
     console.log(`Time: ${timeInSeconds.toFixed(2)} seconds`);
