@@ -52,7 +52,7 @@ node index.js
 
 ```
 ╔════════════════════════════════════════════════════════════╗
-║              TYPING TEST - Type the sentence below        ║
+║              TYPING TEST - Type the sentence below         ║
 ╚════════════════════════════════════════════════════════════╝
 
 Sentence to type:
