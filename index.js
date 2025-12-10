@@ -15,6 +15,18 @@ const SENTENCES = [
   "Perfection is achieved not when there is nothing more to add, but rather when there is nothing more to take away."
 ];
 
+// Pool of words for word-mode
+const WORDS = [
+  "river", "cloud", "stone", "window", "keyboard", "syntax", "function", "variable",
+  "forest", "planet", "ocean", "mountain", "coffee", "camera", "signal", "memory",
+  "library", "buffer", "matrix", "vector", "random", "puzzle", "rocket", "energy",
+  "garden", "summer", "winter", "autumn", "spring", "light", "shadow", "pixel",
+  "binary", "logic", "thread", "promise", "async", "render", "bundle", "module",
+  "cursor", "screen", "button", "switch", "charger", "battery", "cable", "server"
+];
+
+const WORD_MODE_LENGTH = 14; // number of words per round in word mode
+
 class TypingTest {
   constructor() {
     this.sentence = '';
@@ -24,11 +36,59 @@ class TypingTest {
     this.rl = null;
     this.inputHandler = null; // Store the handler so we can remove it
     this.isWaitingForRestart = false;
+    this.mode = null; // 'sentence' | 'words'
   }
 
   // Get a random sentence
   getRandomSentence() {
     return SENTENCES[Math.floor(Math.random() * SENTENCES.length)];
+  }
+
+  // Get a random sequence of words
+  getRandomWordsString() {
+    const words = [];
+    for (let i = 0; i < WORD_MODE_LENGTH; i++) {
+      words.push(WORDS[Math.floor(Math.random() * WORDS.length)]);
+    }
+    return words.join(' ');
+  }
+
+  // Set the current target text based on mode
+  setTargetText() {
+    if (this.mode === 'words') {
+      this.sentence = this.getRandomWordsString();
+    } else {
+      this.sentence = this.getRandomSentence();
+    }
+  }
+
+  // Mode selection prompt
+  async selectMode() {
+    return new Promise((resolve) => {
+      // Ensure raw mode is disabled for the prompt
+      stdin.setRawMode(false);
+      stdin.resume();
+
+      this.clearScreen();
+      console.log('\n╔════════════════════════════════════════════════════════════╗');
+      console.log('║                     SELECT GAME MODE                       ║');
+      console.log('╚════════════════════════════════════════════════════════════╝\n');
+      console.log('Choose a mode:');
+      console.log('  1) Sentences');
+      console.log('  2) Random words\n');
+
+      this.rl = readline.createInterface({ input: stdin, output: stdout });
+      this.rl.question('Enter 1 or 2: ', (answer) => {
+        const trimmed = answer.trim();
+        if (trimmed === '2') {
+          resolve('words');
+        } else {
+          resolve('sentence');
+        }
+        this.rl.close();
+        this.rl = null;
+      });
+    });
   }
 
   // Clear the terminal
@@ -40,11 +100,12 @@ class TypingTest {
   displayProgress() {
     this.clearScreen();
     
+    const modeLabel = this.mode === 'words' ? 'Random words' : 'Sentences';
     console.log('\n╔════════════════════════════════════════════════════════════╗');
-    console.log('║              TYPING TEST - Type the sentence below         ║');
+    console.log(`║   TYPING TEST (${modeLabel}) - Type the text below         ║`);
     console.log('╚════════════════════════════════════════════════════════════╝\n');
     
-    console.log('Sentence to type:');
+    console.log('Text to type:');
     console.log('─────────────────────────────────────────────────────────────\n');
     
     // Display the sentence with color coding
@@ -147,7 +208,7 @@ class TypingTest {
     console.log(`  ${this.userInput}\n`);
     
     console.log('─────────────────────────────────────────────────────────────\n');
-    console.log('Press any key to try again, or Ctrl+C to exit\n');
+    console.log("Press any key to play again, 'm' to change mode, or Ctrl+C to exit\n");
   }
 
   // Handle character input
@@ -202,7 +263,7 @@ class TypingTest {
 
   // Reset the test
   reset() {
-    this.sentence = this.getRandomSentence();
+    this.setTargetText();
     this.userInput = '';
     this.startTime = null;
     this.endTime = null;
@@ -220,15 +281,16 @@ class TypingTest {
   }
 
   // Start the test
-  start() {
+  async start() {
     // Remove any existing handler first
     this.removeInputHandler();
-    
-    this.sentence = this.getRandomSentence();
-    this.userInput = '';
-    this.startTime = null;
-    this.endTime = null;
-    this.isWaitingForRestart = false;
+
+    // Prompt for mode if not set
+    if (!this.mode) {
+      this.mode = await this.selectMode();
+    }
+
+    this.reset();
 
     // Set up raw mode for character-by-character input
     stdin.setRawMode(true);
@@ -239,6 +301,12 @@ class TypingTest {
 
     // Create and store the handler
     this.inputHandler = (char) => {
+      // Allow switching mode on restart screen
+      if (this.isWaitingForRestart) {
+        if (char && char.toLowerCase() === 'm') {
+          this.mode = null; // force mode selection next round
+        }
+      }
       this.handleInput(char);
     };
 
@@ -257,4 +325,3 @@ class TypingTest {
 // Start the application
 const test = new TypingTest();
 test.start();
-
