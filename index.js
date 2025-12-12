@@ -208,7 +208,7 @@ class TypingTest {
     console.log(`  ${this.userInput}\n`);
     
     console.log('─────────────────────────────────────────────────────────────\n');
-    console.log("Press any key to play again, 'm' to change mode, or Ctrl+C to exit\n");
+    console.log("Press any key to play again, 'm' to change mode, or 'q' to exit\n");
   }
 
   // Handle character input
@@ -305,6 +305,9 @@ class TypingTest {
       if (this.isWaitingForRestart) {
         if (char && char.toLowerCase() === 'm') {
           this.mode = null; // force mode selection next round
+        } else if (char && char.toLowerCase() === 'q') {
+          this.cleanup();
+          process.exit(0);
         }
       }
       this.handleInput(char);
