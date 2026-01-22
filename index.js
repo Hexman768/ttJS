@@ -99,55 +99,79 @@ class TypingTest {
   // Display the current state
   displayProgress() {
     this.clearScreen();
-    
+
     const modeLabel = this.mode === 'words' ? 'Random words' : 'Sentences';
     console.log('\n╔════════════════════════════════════════════════════════════╗');
     console.log(`║   TYPING TEST (${modeLabel}) - Type the text below         ║`);
     console.log('╚════════════════════════════════════════════════════════════╝\n');
-    
+
     console.log('Text to type:');
     console.log('─────────────────────────────────────────────────────────────\n');
-    
-    // Display the sentence with color coding
+
+    // Display the sentence with color coding and cursor
     let display = '';
+    const cursorPos = this.userInput.length;
+
     for (let i = 0; i < this.sentence.length; i++) {
-      if (i < this.userInput.length) {
-        if (this.userInput[i] === this.sentence[i]) {
-          // Correct character - green
-          display += `\x1b[32m${this.sentence[i]}\x1b[0m`;
+      // Highlight the character at cursor position with reverse video
+      if (i === cursorPos) {
+        if (i < this.userInput.length) {
+          if (this.userInput[i] === this.sentence[i]) {
+            // Correct character - green with reverse video for cursor
+            display += `\x1b[7m\x1b[32m${this.sentence[i]}\x1b[0m`;
+          } else {
+            // Incorrect character - red with reverse video for cursor
+            display += `\x1b[7m\x1b[31m${this.sentence[i]}\x1b[0m`;
+          }
         } else {
-          // Incorrect character - red
-          display += `\x1b[31m${this.sentence[i]}\x1b[0m`;
+          // Not yet typed - gray with reverse video for cursor
+          display += `\x1b[7m\x1b[90m${this.sentence[i]}\x1b[0m`;
         }
       } else {
-        // Not yet typed - white/gray
-        display += `\x1b[90m${this.sentence[i]}\x1b[0m`;
+        // Normal display for non-cursor characters
+        if (i < this.userInput.length) {
+          if (this.userInput[i] === this.sentence[i]) {
+            // Correct character - green
+            display += `\x1b[32m${this.sentence[i]}\x1b[0m`;
+          } else {
+            // Incorrect character - red
+            display += `\x1b[31m${this.sentence[i]}\x1b[0m`;
+          }
+        } else {
+          // Not yet typed - white/gray
+          display += `\x1b[90m${this.sentence[i]}\x1b[0m`;
+        }
       }
     }
-    
+
+    // Show cursor at the end if all characters are typed (highlight a space)
+    if (cursorPos >= this.sentence.length) {
+      display += `\x1b[7m \x1b[0m`; // Reverse video space for cursor
+    }
+
     console.log(display);
     console.log('\n─────────────────────────────────────────────────────────────\n');
-    
+
     // Show current input
     if (this.userInput.length > 0) {
       console.log(`Your input: ${this.userInput}`);
     }
-    
+
     // Show progress
     const correctChars = this.getCorrectCharacters();
     const accuracy = this.userInput.length > 0 
       ? ((correctChars / this.userInput.length) * 100).toFixed(1)
       : 0;
-    
+
     console.log(`\nProgress: ${this.userInput.length}/${this.sentence.length} characters`);
     console.log(`Accuracy: ${accuracy}%`);
-    
+
     // Show elapsed time if started
     if (this.startTime) {
       const elapsed = (Date.now() - this.startTime) / 1000;
       console.log(`Time: ${elapsed.toFixed(1)}s`);
     }
-    
+
     console.log('\n─────────────────────────────────────────────────────────────');
     console.log('Press ESC to quit, Backspace to delete, Enter when finished\n');
   }
@@ -167,11 +191,11 @@ class TypingTest {
   // Calculate WPM (Words Per Minute)
   calculateWPM() {
     if (!this.startTime || !this.endTime) return 0;
-    
+
     const timeInMinutes = (this.endTime - this.startTime) / 1000 / 60;
     const wordsTyped = this.userInput.trim().split(/\s+/).length;
     const wpm = wordsTyped / timeInMinutes;
-    
+
     return Math.round(wpm);
   }
 
@@ -185,28 +209,28 @@ class TypingTest {
   // Show results
   showResults() {
     this.clearScreen();
-    
+
     const timeInSeconds = (this.endTime - this.startTime) / 1000;
     const wpm = this.calculateWPM();
     const accuracy = this.calculateAccuracy();
     const correctChars = this.getCorrectCharacters();
     const totalChars = this.userInput.length;
-    
+
     console.log('\n╔════════════════════════════════════════════════════════════╗');
     console.log('║                      TYPING TEST RESULTS                   ║');
     console.log('╚════════════════════════════════════════════════════════════╝\n');
-    
+
     console.log(`Time: ${timeInSeconds.toFixed(2)} seconds`);
     console.log(`Speed: ${wpm} WPM (Words Per Minute)`);
     console.log(`Accuracy: ${accuracy.toFixed(1)}%`);
     console.log(`Characters: ${correctChars}/${totalChars} correct\n`);
-    
+
     // Show comparison
     console.log('Original sentence:');
     console.log(`  ${this.sentence}\n`);
     console.log('Your input:');
     console.log(`  ${this.userInput}\n`);
-    
+
     console.log('─────────────────────────────────────────────────────────────\n');
     console.log("Press any key to play again, 'm' to change mode, or 'q' to exit\n");
   }
@@ -240,7 +264,7 @@ class TypingTest {
       return;
     } else if (char >= ' ' && char <= '~') { // Printable characters
       this.userInput += char;
-      
+
       // Auto-complete check - if user typed all characters correctly
       if (this.userInput.length === this.sentence.length) {
         this.endTime = Date.now();
