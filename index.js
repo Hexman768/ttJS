@@ -27,6 +27,9 @@ const WORDS = [
 
 const WORD_MODE_LENGTH = 14; // number of words per round in word mode
 
+// Visible character for space so mistakes on spaces are visible
+const SPACE_MARKER = '_';
+
 class TypingTest {
   constructor() {
     this.sentence = '';
@@ -115,33 +118,38 @@ class TypingTest {
     const cursorPos = this.userInput.length;
 
     for (let i = 0; i < this.sentence.length; i++) {
+      const char = this.sentence[i];
+      const isWrong = i < this.userInput.length && this.userInput[i] !== char;
+      // Only show space marker when user mistyped a space (expected space, typed something else)
+      const displayChar = char === ' ' && isWrong ? SPACE_MARKER : char;
+
       // Highlight the character at cursor position with reverse video
       if (i === cursorPos) {
         if (i < this.userInput.length) {
-          if (this.userInput[i] === this.sentence[i]) {
+          if (this.userInput[i] === char) {
             // Correct character - green with reverse video for cursor
-            display += `\x1b[7m\x1b[32m${this.sentence[i]}\x1b[0m`;
+            display += `\x1b[7m\x1b[32m${char}\x1b[0m`;
           } else {
             // Incorrect character - red with reverse video for cursor
-            display += `\x1b[7m\x1b[31m${this.sentence[i]}\x1b[0m`;
+            display += `\x1b[7m\x1b[31m${displayChar}\x1b[0m`;
           }
         } else {
           // Not yet typed - gray with reverse video for cursor
-          display += `\x1b[7m\x1b[90m${this.sentence[i]}\x1b[0m`;
+          display += `\x1b[7m\x1b[90m${char}\x1b[0m`;
         }
       } else {
         // Normal display for non-cursor characters
         if (i < this.userInput.length) {
-          if (this.userInput[i] === this.sentence[i]) {
+          if (this.userInput[i] === char) {
             // Correct character - green
-            display += `\x1b[32m${this.sentence[i]}\x1b[0m`;
+            display += `\x1b[32m${char}\x1b[0m`;
           } else {
-            // Incorrect character - red
-            display += `\x1b[31m${this.sentence[i]}\x1b[0m`;
+            // Incorrect character - red (show _ only when expected was space)
+            display += `\x1b[31m${displayChar}\x1b[0m`;
           }
         } else {
           // Not yet typed - white/gray
-          display += `\x1b[90m${this.sentence[i]}\x1b[0m`;
+          display += `\x1b[90m${char}\x1b[0m`;
         }
       }
     }
