@@ -82,8 +82,10 @@ class TypingTest {
         const trimmed = answer.trim();
         if (trimmed === '2') {
           resolve('words');
-        } else {
+        } else if (trimmed === '1') {
           resolve('sentence');
+        } else {
+          console.log('Invalid Input!');
         }
         this.rl.close();
         this.rl = null;
