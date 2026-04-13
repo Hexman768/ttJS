@@ -198,6 +198,54 @@ class TypingTest {
     return count;
   }
 
+  // Build word ranges from the target sentence
+  getWordRanges() {
+    const ranges = [];
+    let wordStart = 0;
+
+    for (let i = 0; i < this.sentence.length; i++) {
+      if (this.sentence[i] === ' ') {
+        if (i > wordStart) {
+          ranges.push({ start: wordStart, end: i - 1 });
+        }
+        wordStart = i + 1;
+      }
+    }
+
+    if (wordStart < this.sentence.length) {
+      ranges.push({ start: wordStart, end: this.sentence.length - 1 });
+    }
+
+    return ranges;
+  }
+
+  // Determine how far back the user is allowed to backspace
+  getLockedPrefixLength() {
+    const wordRanges = this.getWordRanges();
+    let lockedPrefixLength = 0;
+
+    for (let i = 0; i < wordRanges.length; i++) {
+      const { start, end } = wordRanges[i];
+      const isWordComplete = this.userInput.length >= end + 1;
+      if (!isWordComplete) {
+        break;
+      }
+
+      const expectedWord = this.sentence.slice(start, end + 1);
+      const typedWord = this.userInput.slice(start, end + 1);
+
+      if (typedWord === expectedWord) {
+        // Lock completed words only while they remain fully correct.
+        lockedPrefixLength = end + 1;
+      } else {
+        // If a completed word is incorrect, allow backspacing into it.
+        break;
+      }
+    }
+
+    return lockedPrefixLength;
+  }
+
   // Calculate WPM (Words Per Minute)
   calculateWPM() {
     if (!this.startTime || !this.endTime) return 0;
@@ -264,7 +312,7 @@ class TypingTest {
       this.cleanup();
       process.exit(0);
     } else if (char === '\u007f' || char === '\b') { // Backspace
-      if (this.userInput.length > 0) {
+      if (this.userInput.length > this.getLockedPrefixLength()) {
         this.userInput = this.userInput.slice(0, -1);
       }
     } else if (char === '\r' || char === '\n') { // Enter
