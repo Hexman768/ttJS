@@ -18,13 +18,14 @@ const SENTENCES = [
   "Perfection is achieved not when there is nothing more to add, but rather when there is nothing more to take away."
 ];
 
-// Monkeytype english_1k word list:
-// https://github.com/monkeytypegame/monkeytype/blob/master/frontend/static/languages/english_1k.json
+// Default english word list (200 most common words):
+// https://github.com/monkeytypegame/monkeytype/blob/master/frontend/static/languages/english.json
 const WORDS = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'words/english_1k.json'), 'utf8')
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'words/english.json'), 'utf8')
 ).words;
 
 const WORD_MODE_LENGTH = 14; // number of words per round in word mode
+const WORD_REGEN_LIMIT = 100; // infinite-loop guard
 
 // Visible character for space so mistakes on spaces are visible
 const SPACE_MARKER = '_';
@@ -46,12 +47,47 @@ class TypingTest {
     return SENTENCES[Math.floor(Math.random() * SENTENCES.length)];
   }
 
-  // Get a random sequence of words
+  // Uniform random pick, (non-zipf) mode
+  pickRandomWord() {
+    return WORDS[Math.floor(Math.random() * WORDS.length)];
+  }
+
+  // Mirror getNextWord filters for standard english word mode:
+  // - don't repeat the previous two words
+  // - skip capital "I" when punctuation is off
+  // - skip words containing punctuation/numbers
+  shouldRegenerateWord(word, previousWord, previousWord2) {
+    const normalized = word.toLowerCase();
+    return (
+      previousWord === normalized ||
+      previousWord2 === normalized ||
+      word === 'I' ||
+      /[-=_+[\]{};'\\:"|,./<>?]/i.test(word) ||
+      /[0-9]/.test(word)
+    );
+  }
+
+  // Get a random sequence of words using selection rules
   getRandomWordsString() {
     const words = [];
+
     for (let i = 0; i < WORD_MODE_LENGTH; i++) {
-      words.push(WORDS[Math.floor(Math.random() * WORDS.length)]);
+      let word = this.pickRandomWord();
+      const previousWord = words[i - 1]?.toLowerCase();
+      const previousWord2 = words[i - 2]?.toLowerCase();
+      let regenerationCount = 0;
+
+      while (
+        regenerationCount < WORD_REGEN_LIMIT &&
+        this.shouldRegenerateWord(word, previousWord, previousWord2)
+      ) {
+        regenerationCount++;
+        word = this.pickRandomWord();
+      }
+
+      words.push(word);
     }
+
     return words.join(' ');
   }
 
@@ -245,13 +281,15 @@ class TypingTest {
     return lockedPrefixLength;
   }
 
-  // Calculate WPM (Words Per Minute)
+  // (correct characters / 5) / minutes
   calculateWPM() {
     if (!this.startTime || !this.endTime) return 0;
 
     const timeInMinutes = (this.endTime - this.startTime) / 1000 / 60;
-    const wordsTyped = this.userInput.trim().split(/\s+/).length;
-    const wpm = wordsTyped / timeInMinutes;
+    if (timeInMinutes <= 0) return 0;
+
+    const correctChars = this.getCorrectCharacters();
+    const wpm = (correctChars / 5) / timeInMinutes;
 
     return Math.round(wpm);
   }
