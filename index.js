@@ -1,4 +1,7 @@
 import readline from 'readline';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { stdin, stdout } from 'process';
 
 // Sample sentences for typing test
@@ -15,15 +18,11 @@ const SENTENCES = [
   "Perfection is achieved not when there is nothing more to add, but rather when there is nothing more to take away."
 ];
 
-// Pool of words for word-mode
-const WORDS = [
-  "river", "cloud", "stone", "window", "keyboard", "syntax", "function", "variable",
-  "forest", "planet", "ocean", "mountain", "coffee", "camera", "signal", "memory",
-  "library", "buffer", "matrix", "vector", "random", "puzzle", "rocket", "energy",
-  "garden", "summer", "winter", "autumn", "spring", "light", "shadow", "pixel",
-  "binary", "logic", "thread", "promise", "async", "render", "bundle", "module",
-  "cursor", "screen", "button", "switch", "charger", "battery", "cable", "server"
-];
+// Monkeytype english_1k word list:
+// https://github.com/monkeytypegame/monkeytype/blob/master/frontend/static/languages/english_1k.json
+const WORDS = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'words/english_1k.json'), 'utf8')
+).words;
 
 const WORD_MODE_LENGTH = 14; // number of words per round in word mode
 
