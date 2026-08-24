@@ -327,15 +327,24 @@ class TypingTest {
     console.log(`  ${this.userInput}\n`);
 
     console.log('─────────────────────────────────────────────────────────────\n');
-    console.log("Press any key to play again, 'm' to change mode, or 'q' to exit\n");
+    console.log("Press Space to play again, 'm' to change mode, or 'q' to exit\n");
   }
 
   // Handle character input
   handleInput(char) {
-    // If waiting for restart, handle restart
+    // Results screen: ignore accidental keypresses unless Space / m / q
     if (this.isWaitingForRestart) {
-      this.reset();
-      this.start();
+      if (char === ' ') {
+        this.reset();
+        this.start();
+      } else if (char && char.toLowerCase() === 'm') {
+        this.mode = null; // force mode selection next round
+        this.reset();
+        this.start();
+      } else if (char && char.toLowerCase() === 'q') {
+        this.cleanup();
+        process.exit(0);
+      }
       return;
     }
 
@@ -420,15 +429,6 @@ class TypingTest {
 
     // Create and store the handler
     this.inputHandler = (char) => {
-      // Allow switching mode on restart screen
-      if (this.isWaitingForRestart) {
-        if (char && char.toLowerCase() === 'm') {
-          this.mode = null; // force mode selection next round
-        } else if (char && char.toLowerCase() === 'q') {
-          this.cleanup();
-          process.exit(0);
-        }
-      }
       this.handleInput(char);
     };
 
