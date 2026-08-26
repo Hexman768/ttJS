@@ -327,14 +327,14 @@ class TypingTest {
     console.log(`  ${this.userInput}\n`);
 
     console.log('─────────────────────────────────────────────────────────────\n');
-    console.log("Press Space to play again, 'm' to change mode, or 'q' to exit\n");
+    console.log("Press Enter to play again, 'm' to change mode, or 'q' to exit\n");
   }
 
   // Handle character input
   handleInput(char) {
-    // Results screen: ignore accidental keypresses unless Space / m / q
+    // Results screen: ignore accidental keypresses unless Enter / m / q
     if (this.isWaitingForRestart) {
-      if (char === ' ') {
+      if (char === '\r' || char === '\n') { // Detect Enter
         this.reset();
         this.start();
       } else if (char && char.toLowerCase() === 'm') {
