@@ -1,4 +1,8 @@
-# Terminal Typing Test (ttjs)
+<p align="center">
+  <img src="assets/logo.png" alt="ttJS" width="420">
+</p>
+
+<h1 align="center">Terminal Typing Test (ttjs)</h1>
 
 A simple terminal-based typing test application that measures your typing speed and accuracy.
 
