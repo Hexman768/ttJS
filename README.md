@@ -7,7 +7,7 @@ A simple terminal-based typing test application that measures your typing speed 
 - Real-time progress tracking with color-coded feedback
 - Character-by-character accuracy display
 - Words Per Minute (WPM) calculation
-- Two modes: full sentences or random words
+- Random-word rounds so results stay accurate
 - Clean terminal interface
 
 ## Installation
@@ -30,41 +30,42 @@ node index.js
 
 ## How to Use
 
-1. Pick a mode: **Sentences** or **Random words**
-2. The text for that round will appear on screen
+1. Press **Enter** on the title screen to start
+2. A random sequence of words will appear on screen
 3. Start typing the text character by character
-3. You'll see:
+4. You'll see:
    - **Green** characters = correctly typed
    - **Red** characters = incorrectly typed
    - **Gray** characters = not yet typed
-4. Progress, accuracy, and elapsed time are shown in real-time
-5. Press **Enter** when finished, or continue typing until you complete the text
-6. View your results: WPM, accuracy, and time
-7. Press any key to try again (or press **m** on the results screen to change mode)
+5. Progress, accuracy, and elapsed time are shown in real-time
+6. Press **Enter** when finished, or continue typing until you complete the text
+7. View your results: WPM, accuracy, and time
+8. Press **Enter** to try again, or **q** to exit
 
 ## Controls
 
+- **Enter** (title screen) - Start a typing test
 - **ESC** - Exit the application
 - **Backspace** - Delete last character
-- **Enter** - Finish typing (or auto-finishes when text is complete)
+- **Enter** (during a test) - Finish typing (or auto-finishes when text is complete)
 - **Ctrl+C** - Exit the application
-- **m** (on results screen) - Switch mode before the next round
+- **q** (on results screen) - Exit the application
 
 ## Example Output
 
 ```
 ╔════════════════════════════════════════════════════════════╗
-║              TYPING TEST - Type the sentence below         ║
+║              TYPING TEST - Type the text below             ║
 ╚════════════════════════════════════════════════════════════╝
 
-Sentence to type:
+Text to type:
 ─────────────────────────────────────────────────────────────
 
-The quick brown fox jumps over the lazy dog.
+the of and to in he have it that for they with as not
 
 ─────────────────────────────────────────────────────────────
 
-Progress: 15/44 characters
+Progress: 15/52 characters
 Accuracy: 100.0%
 Time: 3.2s
 

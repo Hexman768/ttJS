@@ -1,22 +1,7 @@
-import readline from 'readline';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { stdin, stdout } from 'process';
-
-// Sample sentences for typing test
-const SENTENCES = [
-  "The quick brown fox jumps over the lazy dog.",
-  "Programming is the art of telling another human being what one wants the computer to do.",
-  "The best way to get a project done faster is to start sooner.",
-  "Code is like humor. When you have to explain it, it's bad.",
-  "First, solve the problem. Then, write the code.",
-  "Experience is the name everyone gives to their mistakes.",
-  "In order to be irreplaceable, one must always be different.",
-  "Java is to JavaScript what car is to carpet.",
-  "Sometimes it pays to stay in bed on Monday, rather than spending the rest of the week debugging Monday's code.",
-  "Perfection is achieved not when there is nothing more to add, but rather when there is nothing more to take away."
-];
 
 // Default english word list (200 most common words):
 // https://github.com/monkeytypegame/monkeytype/blob/master/frontend/static/languages/english.json
@@ -24,11 +9,19 @@ const WORDS = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'words/english.json'), 'utf8')
 ).words;
 
-const WORD_MODE_LENGTH = 14; // number of words per round in word mode
+const WORD_MODE_LENGTH = 14; // number of words per round
 const WORD_REGEN_LIMIT = 100; // infinite-loop guard
 
 // Visible character for space so mistakes on spaces are visible
 const SPACE_MARKER = '_';
+
+const TITLE_ART = [
+  '  _   _      _ ____  ',
+  ' | |_| |_   | / ___| ',
+  ' | __| __|  | \\___ \\ ',
+  ' | |_| |_ |_| |___) |',
+  '  \\__|\\__|(___|____/ ',
+];
 
 class TypingTest {
   constructor() {
@@ -36,18 +29,11 @@ class TypingTest {
     this.userInput = '';
     this.startTime = null;
     this.endTime = null;
-    this.rl = null;
     this.inputHandler = null; // Store the handler so we can remove it
     this.isWaitingForRestart = false;
-    this.mode = null; // 'sentence' | 'words'
   }
 
-  // Get a random sentence
-  getRandomSentence() {
-    return SENTENCES[Math.floor(Math.random() * SENTENCES.length)];
-  }
-
-  // Uniform random pick, (non-zipf) mode
+  // Uniform random pick, (non-zipf)
   pickRandomWord() {
     return WORDS[Math.floor(Math.random() * WORDS.length)];
   }
@@ -91,43 +77,56 @@ class TypingTest {
     return words.join(' ');
   }
 
-  // Set the current target text based on mode
+  // Set the current target text
   setTargetText() {
-    if (this.mode === 'words') {
-      this.sentence = this.getRandomWordsString();
-    } else {
-      this.sentence = this.getRandomSentence();
-    }
+    this.sentence = this.getRandomWordsString();
   }
 
-  // Mode selection prompt
-  async selectMode() {
+  // Center a line in the terminal
+  centerLine(text) {
+    const width = stdout.columns || 80;
+    const pad = Math.max(0, Math.floor((width - text.length) / 2));
+    return ' '.repeat(pad) + text;
+  }
+
+  // Title / landing screen
+  showLandingPage() {
+    this.clearScreen();
+
+    const prompt = 'Press Enter to start typing';
+    const rows = stdout.rows || 24;
+    const topPad = Math.max(1, Math.floor((rows - TITLE_ART.length - 4) / 3));
+
+    stdout.write('\n'.repeat(topPad));
+    for (const line of TITLE_ART) {
+      console.log(`\x1b[36m${this.centerLine(line)}\x1b[0m`);
+    }
+    console.log();
+    console.log(`\x1b[2m${this.centerLine(prompt)}\x1b[0m`);
+  }
+
+  // Wait on the landing page until the user presses Enter
+  waitForLandingEnter() {
+    this.showLandingPage();
+
     return new Promise((resolve) => {
-      // Ensure raw mode is disabled for the prompt
-      stdin.setRawMode(false);
+      stdin.setRawMode(true);
       stdin.resume();
+      stdin.setEncoding('utf8');
 
-      this.clearScreen();
-      console.log('\n╔════════════════════════════════════════════════════════════╗');
-      console.log('║                     SELECT GAME MODE                       ║');
-      console.log('╚════════════════════════════════════════════════════════════╝\n');
-      console.log('Choose a mode:');
-      console.log('  1) Sentences');
-      console.log('  2) Random words\n');
-
-      this.rl = readline.createInterface({ input: stdin, output: stdout });
-      this.rl.question('Enter 1 or 2: ', (answer) => {
-        const trimmed = answer.trim();
-        if (trimmed === '2') {
-          resolve('words');
-        } else if (trimmed === '1') {
-          resolve('sentence');
-        } else {
-          console.log('Invalid Input!');
+      const onData = (char) => {
+        if (char === '\u0003' || char === '\u001b') { // Ctrl+C or ESC
+          stdin.removeListener('data', onData);
+          this.cleanup();
+          process.exit(0);
         }
-        this.rl.close();
-        this.rl = null;
-      });
+        if (char === '\r' || char === '\n') {
+          stdin.removeListener('data', onData);
+          resolve();
+        }
+      };
+
+      stdin.on('data', onData);
     });
   }
 
@@ -140,9 +139,8 @@ class TypingTest {
   displayProgress() {
     this.clearScreen();
 
-    const modeLabel = this.mode === 'words' ? 'Random words' : 'Sentences';
     console.log('\n╔════════════════════════════════════════════════════════════╗');
-    console.log(`║   TYPING TEST (${modeLabel}) - Type the text below         ║`);
+    console.log('║              TYPING TEST - Type the text below             ║');
     console.log('╚════════════════════════════════════════════════════════════╝\n');
 
     console.log('Text to type:');
@@ -321,26 +319,21 @@ class TypingTest {
     console.log(`Characters: ${correctChars}/${totalChars} correct\n`);
 
     // Show comparison
-    console.log('Original sentence:');
+    console.log('Original text:');
     console.log(`  ${this.sentence}\n`);
     console.log('Your input:');
     console.log(`  ${this.userInput}\n`);
 
     console.log('─────────────────────────────────────────────────────────────\n');
-    console.log("Press Enter to play again, 'm' to change mode, or 'q' to exit\n");
+    console.log("Press Enter to play again, or 'q' to exit\n");
   }
 
   // Handle character input
   handleInput(char) {
-    // Results screen: ignore accidental keypresses unless Enter / m / q
+    // Results screen: ignore accidental keypresses unless Enter / q
     if (this.isWaitingForRestart) {
       if (char === '\r' || char === '\n') { // Detect Enter
-        this.reset();
-        this.start();
-      } else if (char && char.toLowerCase() === 'm') {
-        this.mode = null; // force mode selection next round
-        this.reset();
-        this.start();
+        this.beginRound();
       } else if (char && char.toLowerCase() === 'q') {
         this.cleanup();
         process.exit(0);
@@ -403,44 +396,36 @@ class TypingTest {
     this.removeInputHandler();
     stdin.setRawMode(false);
     stdin.pause();
-    if (this.rl) {
-      this.rl.close();
-    }
   }
 
-  // Start the test
-  async start() {
-    // Remove any existing handler first
+  // Start a typing round (skips the landing page)
+  beginRound() {
     this.removeInputHandler();
-
-    // Prompt for mode if not set
-    if (!this.mode) {
-      this.mode = await this.selectMode();
-    }
-
     this.reset();
 
-    // Set up raw mode for character-by-character input
     stdin.setRawMode(true);
     stdin.resume();
     stdin.setEncoding('utf8');
 
     this.displayProgress();
 
-    // Create and store the handler
     this.inputHandler = (char) => {
       this.handleInput(char);
     };
 
-    // Add the event listener
     stdin.on('data', this.inputHandler);
+  }
 
-    // Handle Ctrl+C
+  // Start the application from the landing page
+  async start() {
     stdin.once('SIGINT', () => {
       this.cleanup();
       console.log('\n\nGoodbye!');
       process.exit(0);
     });
+
+    await this.waitForLandingEnter();
+    this.beginRound();
   }
 }
 
