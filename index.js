@@ -23,6 +23,79 @@ const TITLE_ART = [
   '  \\__|\\__|(___|____/ ',
 ];
 
+// Keep this in sync with program behavior as features are added.
+const HELP = {
+  description: 'A terminal typing test. Type a random set of words, then see your WPM and accuracy.',
+  sections: [
+    {
+      title: 'Usage',
+      items: [
+        ['npm start', 'Start the typing test'],
+        ['node index.js --help', 'Show this help menu'],
+        ['node index.js -h', 'Show this help menu'],
+      ],
+    },
+    {
+      title: 'Title screen',
+      items: [
+        ['Enter', 'Start a random-words typing test'],
+        ['h, ?', 'Show this help menu'],
+        ['ESC, q', 'Quit'],
+      ],
+    },
+    {
+      title: 'During a test',
+      items: [
+        ['Letter keys', 'Type the shown text'],
+        ['Backspace', 'Delete the last unlocked character'],
+        ['Enter', 'Finish the round early'],
+        ['ESC', 'Quit'],
+      ],
+    },
+    {
+      title: 'Results',
+      items: [
+        ['Enter', 'Play another round'],
+        ['h, ?', 'Show this help menu'],
+        ['q', 'Quit'],
+      ],
+    },
+    {
+      title: 'Scoring & rules',
+      items: [
+        ['WPM', '(correct characters / 5) / minutes'],
+        ['Accuracy', 'correct characters / characters typed'],
+        ['Colors', 'green = correct, red = incorrect, gray = not yet typed'],
+        ['Backspace lock', 'completed correct words cannot be deleted'],
+      ],
+    },
+  ],
+};
+
+function wantsHelp(args) {
+  return args.some((arg) => arg === '--help' || arg === '-h' || arg === 'help');
+}
+
+function colorize(text, code) {
+  if (!stdout.isTTY) return text;
+  return `\x1b[${code}m${text}\x1b[0m`;
+}
+
+function writeHelp() {
+  console.log('\n╔════════════════════════════════════════════════════════════╗');
+  console.log('║                         ttJS HELP                          ║');
+  console.log('╚════════════════════════════════════════════════════════════╝\n');
+  console.log(`${HELP.description}\n`);
+
+  for (const section of HELP.sections) {
+    console.log(colorize(section.title.toUpperCase(), '36'));
+    for (const [key, description] of section.items) {
+      console.log(`  ${key.padEnd(24)}${description}`);
+    }
+    console.log();
+  }
+}
+
 class TypingTest {
   constructor() {
     this.sentence = '';
@@ -31,6 +104,7 @@ class TypingTest {
     this.endTime = null;
     this.inputHandler = null; // Store the handler so we can remove it
     this.isWaitingForRestart = false;
+    this.isShowingHelp = false;
   }
 
   // Uniform random pick, (non-zipf)
@@ -94,8 +168,9 @@ class TypingTest {
     this.clearScreen();
 
     const prompt = 'Press Enter to start typing';
+    const hint = 'h / ? help   ·   ESC quit';
     const rows = stdout.rows || 24;
-    const topPad = Math.max(1, Math.floor((rows - TITLE_ART.length - 4) / 3));
+    const topPad = Math.max(1, Math.floor((rows - TITLE_ART.length - 5) / 3));
 
     stdout.write('\n'.repeat(topPad));
     for (const line of TITLE_ART) {
@@ -103,11 +178,64 @@ class TypingTest {
     }
     console.log();
     console.log(`\x1b[2m${this.centerLine(prompt)}\x1b[0m`);
+    console.log(`\x1b[2m${this.centerLine(hint)}\x1b[0m`);
   }
 
-  // Wait on the landing page until the user presses Enter
+  // Full-screen help used during runtime
+  displayHelp() {
+    this.clearScreen();
+    writeHelp();
+    console.log('─────────────────────────────────────────────────────────────\n');
+    console.log('Press Enter or ESC to return\n');
+  }
+
+  isHelpKey(char) {
+    return char === 'h' || char === 'H' || char === '?';
+  }
+
+  isQuitKey(char) {
+    return char === 'q' || char === 'Q' || char === '\u001b' || char === '\u0003';
+  }
+
+  // Wait on the landing page until the user starts a test
   waitForLandingEnter() {
-    this.showLandingPage();
+    return new Promise((resolve) => {
+      const attachLandingHandler = () => {
+        this.showLandingPage();
+        stdin.setRawMode(true);
+        stdin.resume();
+        stdin.setEncoding('utf8');
+
+        const onData = (char) => {
+          if (this.isQuitKey(char)) {
+            stdin.removeListener('data', onData);
+            this.cleanup();
+            process.exit(0);
+          }
+
+          if (this.isHelpKey(char)) {
+            stdin.removeListener('data', onData);
+            this.waitForHelpDismiss().then(attachLandingHandler);
+            return;
+          }
+
+          if (char === '\r' || char === '\n') {
+            stdin.removeListener('data', onData);
+            resolve();
+          }
+        };
+
+        stdin.on('data', onData);
+      };
+
+      attachLandingHandler();
+    });
+  }
+
+  // Show help, then resume when the user dismisses it
+  waitForHelpDismiss() {
+    this.isShowingHelp = true;
+    this.displayHelp();
 
     return new Promise((resolve) => {
       stdin.setRawMode(true);
@@ -115,13 +243,14 @@ class TypingTest {
       stdin.setEncoding('utf8');
 
       const onData = (char) => {
-        if (char === '\u0003' || char === '\u001b') { // Ctrl+C or ESC
+        if (char === '\u0003') {
           stdin.removeListener('data', onData);
           this.cleanup();
           process.exit(0);
         }
-        if (char === '\r' || char === '\n') {
+        if (char === '\r' || char === '\n' || char === '\u001b') {
           stdin.removeListener('data', onData);
+          this.isShowingHelp = false;
           resolve();
         }
       };
@@ -325,15 +454,30 @@ class TypingTest {
     console.log(`  ${this.userInput}\n`);
 
     console.log('─────────────────────────────────────────────────────────────\n');
-    console.log("Press Enter to play again, or 'q' to exit\n");
+    console.log("Press Enter to play again, 'h' or '?' for help, or 'q' to exit\n");
   }
 
   // Handle character input
   handleInput(char) {
-    // Results screen: ignore accidental keypresses unless Enter / q
+    if (this.isShowingHelp) {
+      if (char === '\u0003') {
+        this.cleanup();
+        process.exit(0);
+      }
+      if (char === '\r' || char === '\n' || char === '\u001b') {
+        this.isShowingHelp = false;
+        this.showResults();
+      }
+      return;
+    }
+
+    // Results screen: ignore accidental keypresses unless Enter / h / q
     if (this.isWaitingForRestart) {
       if (char === '\r' || char === '\n') { // Detect Enter
         this.beginRound();
+      } else if (this.isHelpKey(char)) {
+        this.isShowingHelp = true;
+        this.displayHelp();
       } else if (char && char.toLowerCase() === 'q') {
         this.cleanup();
         process.exit(0);
@@ -389,6 +533,7 @@ class TypingTest {
     this.startTime = null;
     this.endTime = null;
     this.isWaitingForRestart = false;
+    this.isShowingHelp = false;
   }
 
   // Cleanup
@@ -429,6 +574,10 @@ class TypingTest {
   }
 }
 
-// Start the application
+if (wantsHelp(process.argv.slice(2))) {
+  writeHelp();
+  process.exit(0);
+}
+
 const test = new TypingTest();
 test.start();
