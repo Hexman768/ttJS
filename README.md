@@ -98,17 +98,19 @@ Accuracy is `correct characters / characters typed`.
 
 ## Example Output
 
+During a timed test the title, word paragraph, and stats share the same centered column:
+
 ```
-╔════════════════════════════════════════════════════════════╗
-║              TYPING TEST - Type the text below             ║
-╚════════════════════════════════════════════════════════════╝
+                    ╔══════════════════════════════════════════════════════════╗
+                    ║            TYPING TEST - Type the text below             ║
+                    ╚══════════════════════════════════════════════════════════╝
 
                     Text to type:
                     ────────────────────────────────────────────────────────────
 
-                    the of and to in he have it that for they with as
-                    not on she at by this we you do but from or which
-                    one would all will there say who make when can more
+                    will it house say with nation go by might many still the
+                    long then than so house very many other person in take like
+                    day what hand such seem but hold another here or nation up
 
                     ────────────────────────────────────────────────────────────
 
@@ -119,6 +121,8 @@ Accuracy is `correct characters / characters typed`.
                     ────────────────────────────────────────────────────────────
                     Press ESC to quit, Backspace to delete
 ```
+
+Typed characters are color-coded in the terminal (green = correct, red = incorrect, gray = not yet typed). When you finish all three lines, a new paragraph replaces them immediately and the timer keeps running.
 
 ## License
 
