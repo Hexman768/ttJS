@@ -8,12 +8,14 @@ A simple terminal-based typing test application that measures your typing speed 
 
 ## Features
 
+- Timed typing tests (Monkeytype-style)
+- Configurable duration via CLI (`--time` / `-t`)
 - Real-time progress tracking with color-coded feedback
 - Character-by-character accuracy display
 - Words Per Minute (WPM) calculation
-- Random-word rounds so results stay accurate
+- Random-word stream so results stay accurate
 - Clean terminal interface
-- Help menu (`--help`, or `h` / `?` in the app)
+- Help menu (`--help`, or `?` in the app)
 
 ## Installation
 
@@ -21,7 +23,7 @@ No dependencies required! Just make sure you have Node.js installed (v14 or high
 
 ## Usage
 
-Run the typing test:
+Run a 15-second timed test (default):
 
 ```bash
 npm start
@@ -31,6 +33,24 @@ or
 
 ```bash
 node index.js
+```
+
+Run a custom-length timed test:
+
+```bash
+node index.js --time 30
+```
+
+or
+
+```bash
+node index.js -t 60
+```
+
+or
+
+```bash
+npm start -- --time 45
 ```
 
 Show the in-program help menu:
@@ -47,49 +67,62 @@ npm start -- --help
 
 ## How to Use
 
-1. Press **Enter** on the title screen to start, or **h** / **?** for help
-2. A random sequence of words will appear on screen
-3. Start typing the text character by character
+1. Press **Enter** on the title screen to start, or **?** for help
+2. A paragraph of random words will appear on screen (three wrapped lines)
+3. Start typing — the timer begins on your first keypress
 4. You'll see:
    - **Green** characters = correctly typed
    - **Red** characters = incorrectly typed
    - **Gray** characters = not yet typed
-5. Progress, accuracy, and elapsed time are shown in real-time
-6. Press **Enter** when finished, or continue typing until you complete the text
-7. View your results: WPM, accuracy, and time
-8. Press **Enter** to try again, **h** / **?** for help, or **q** to exit
+5. Finished lines stay visible; when you complete the whole paragraph, a new one appears immediately
+6. Time remaining, characters typed, and accuracy are shown in real-time
+7. When the timer hits zero, your results appear: WPM, accuracy, and duration
+8. Press **Enter** to try again, **?** for help, or **q** to exit
 
 ## Controls
 
 - **Enter** (title screen) - Start a typing test
-- **h** or **?** (title or results screen) - Show the help menu
+- **?** (title or results screen) - Show the help menu
 - **ESC** - Exit the application (or return from help)
 - **Backspace** - Delete last character
-- **Enter** (during a test) - Finish typing (or auto-finishes when text is complete)
 - **Ctrl+C** - Exit the application
 - **q** (on title or results screen) - Exit the application
 
+## Scoring
+
+WPM is calculated the same way Monkeytype does for timed tests:
+
+`(correct characters / 5) / (configured seconds / 60)`
+
+Accuracy is `correct characters / characters typed`.
+
 ## Example Output
 
+During a timed test the title, word paragraph, and stats share the same centered column:
+
 ```
-╔════════════════════════════════════════════════════════════╗
-║              TYPING TEST - Type the text below             ║
-╚════════════════════════════════════════════════════════════╝
+                    ╔══════════════════════════════════════════════════════════╗
+                    ║            TYPING TEST - Type the text below             ║
+                    ╚══════════════════════════════════════════════════════════╝
 
-Text to type:
-─────────────────────────────────────────────────────────────
+                    Text to type:
+                    ────────────────────────────────────────────────────────────
 
-the of and to in he have it that for they with as not
+                    will it house say with nation go by might many still the
+                    long then than so house very many other person in take like
+                    day what hand such seem but hold another here or nation up
 
-─────────────────────────────────────────────────────────────
+                    ────────────────────────────────────────────────────────────
 
-Progress: 15/52 characters
-Accuracy: 100.0%
-Time: 3.2s
+                    Time left: 12.4s / 15s
+                    Characters: 18
+                    Accuracy: 100.0%
 
-─────────────────────────────────────────────────────────────
-Press ESC to quit, Backspace to delete, Enter when finished
+                    ────────────────────────────────────────────────────────────
+                    Press ESC to quit, Backspace to delete
 ```
+
+Typed characters are color-coded in the terminal (green = correct, red = incorrect, gray = not yet typed). When you finish all three lines, a new paragraph replaces them immediately and the timer keeps running.
 
 ## License
 
