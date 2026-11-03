@@ -4,16 +4,16 @@
 
 <h1 align="center">Terminal Typing Test (ttjs)</h1>
 
-A simple terminal-based typing test application that measures your typing speed and accuracy.
+A terminal typing trainer with a timed Monkeytype-style test and a spaceship word-blaster game. Both modes use the same English word list.
 
 ## Features
 
+- Splash menu to pick a mode
 - Timed typing tests (Monkeytype-style)
-- Configurable duration via CLI (`--time` / `-t`)
-- Real-time progress tracking with color-coded feedback
-- Character-by-character accuracy display
-- Words Per Minute (WPM) calculation
-- Random-word stream so results stay accurate
+- Spaceship typing game (type words to blast them)
+- Configurable timed-test duration via CLI (`--time` / `-t`)
+- Real-time color-coded typing feedback
+- Words Per Minute (WPM) calculation for timed tests
 - Clean terminal interface
 - Help menu (`--help`, or `?` in the app)
 
@@ -23,7 +23,7 @@ No dependencies required! Just make sure you have Node.js installed (v14 or high
 
 ## Usage
 
-Run a 15-second timed test (default):
+Open the splash menu:
 
 ```bash
 npm start
@@ -35,7 +35,7 @@ or
 node index.js
 ```
 
-Run a custom-length timed test:
+Start a custom-length timed test directly:
 
 ```bash
 node index.js --time 30
@@ -47,58 +47,71 @@ or
 node index.js -t 60
 ```
 
+Start the spaceship game directly:
+
+```bash
+node index.js --game
+```
+
 or
 
 ```bash
-npm start -- --time 45
+node index.js -g
 ```
 
-Show the in-program help menu:
+Show help:
 
 ```bash
 node index.js --help
 ```
 
-or
+## Splash Menu
 
-```bash
-npm start -- --help
-```
+The title splash is the mode menu:
 
-## How to Use
+- **1** or **Enter** — Timed typing test
+- **2** — Spaceship typing game
+- **?** — Help
+- **ESC** / **q** — Quit
 
-1. Press **Enter** on the title screen to start, or **?** for help
-2. A paragraph of random words will appear on screen (three wrapped lines)
+## Timed Typing Test
+
+1. Pick mode **1** from the splash menu
+2. A paragraph of random words appears (three wrapped lines)
 3. Start typing — the timer begins on your first keypress
-4. You'll see:
-   - **Green** characters = correctly typed
-   - **Red** characters = incorrectly typed
-   - **Gray** characters = not yet typed
-5. Finished lines stay visible; when you complete the whole paragraph, a new one appears immediately
-6. Time remaining, characters typed, and accuracy are shown in real-time
-7. When the timer hits zero, your results appear: WPM, accuracy, and duration
-8. Press **Enter** to try again, **?** for help, or **q** to exit
+4. Color feedback:
+   - **Green** = correctly typed
+   - **Red** = incorrectly typed
+   - **Gray** = not yet typed
+5. Finished lines stay visible; completing the paragraph swaps in a new one immediately
+6. When the timer hits zero, results show WPM, accuracy, and duration
+7. Press **Enter** to retry, **m** for the menu, **?** for help, or **q** to exit
 
-## Controls
-
-- **Enter** (title screen) - Start a typing test
-- **?** (title or results screen) - Show the help menu
-- **ESC** - Exit the application (or return from help)
-- **Backspace** - Delete last character
-- **Ctrl+C** - Exit the application
-- **q** (on title or results screen) - Exit the application
-
-## Scoring
-
-WPM is calculated the same way Monkeytype does for timed tests:
+### Timed-test scoring
 
 `(correct characters / 5) / (configured seconds / 60)`
 
-Accuracy is `correct characters / characters typed`.
+## Spaceship Typing Game
 
-## Example Output
+1. Pick mode **2** from the splash menu
+2. A ship sits on the left; words drift in from the right
+3. Type a word to lock onto it — progress is colored like the timed test
+4. Finish the word and the ship fires a laser; the word explodes
+5. If a word reaches the ship, the game ends
+6. Press **Enter** to retry, **m** for the menu, or **q** to exit
 
-During a timed test the title, word paragraph, and stats share the same centered column:
+## Controls
+
+- **1 / Enter** (splash) — Timed typing test
+- **2** (splash) — Spaceship game
+- **?** — Help
+- **ESC** — Quit (or return from help)
+- **Backspace** — Delete / undo
+- **m** (results) — Return to splash menu
+- **q** (splash or results) — Quit
+- **Ctrl+C** — Quit
+
+## Example: Timed Test
 
 ```
                     ╔══════════════════════════════════════════════════════════╗
@@ -121,8 +134,6 @@ During a timed test the title, word paragraph, and stats share the same centered
                     ────────────────────────────────────────────────────────────
                     Press ESC to quit, Backspace to delete
 ```
-
-Typed characters are color-coded in the terminal (green = correct, red = incorrect, gray = not yet typed). When you finish all three lines, a new paragraph replaces them immediately and the timer keeps running.
 
 ## License
 
