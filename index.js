@@ -1,16 +1,8 @@
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import { stdin, stdout } from 'process';
-
-// Default english word list (200 most common words):
-// https://github.com/monkeytypegame/monkeytype/blob/master/frontend/static/languages/english.json
-const WORDS = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'words/english.json'), 'utf8')
-).words;
+import { SpaceshipTypingGame } from './game.js';
+import { nextEligibleWord } from './words.js';
 
 const DEFAULT_DURATION_SECONDS = 15;
-const WORD_REGEN_LIMIT = 100; // infinite-loop guard
 const WORD_BUFFER_CHARS = 200; // keep ahead of the cursor for multi-line display
 const TIMER_TICK_MS = 100;
 // Monkeytype-style line layout: capped width, side margins, 3 visible lines
@@ -32,31 +24,45 @@ const TITLE_ART = [
 // Keep this in sync with program behavior as features are added.
 const HELP = {
   description:
-    'A timed terminal typing test. Type random words until the timer ends, then see your WPM and accuracy.',
+    'A terminal typing trainer with a timed test and a spaceship word-blaster game. Both modes use the same English word list.',
   sections: [
     {
       title: 'Usage',
       items: [
-        ['npm start', `Start a ${DEFAULT_DURATION_SECONDS}s timed test`],
+        ['npm start', 'Open the splash menu'],
         ['node index.js --time 30', 'Start a timed test lasting 30 seconds'],
         ['node index.js -t 60', 'Same as --time 60'],
+        ['node index.js --game', 'Start the spaceship typing game'],
+        ['node index.js -g', 'Same as --game'],
         ['node index.js --help', 'Show this help menu'],
         ['node index.js -h', 'Show this help menu'],
       ],
     },
     {
-      title: 'Title screen',
+      title: 'Splash menu',
       items: [
-        ['Enter', 'Start the timed typing test'],
+        ['1 or Enter', 'Start the timed typing test'],
+        ['2', 'Start the spaceship typing game'],
         ['?', 'Show this help menu'],
         ['ESC, q', 'Quit'],
       ],
     },
     {
-      title: 'During a test',
+      title: 'Timed test',
       items: [
         ['Letter keys', 'Type the shown text'],
         ['Backspace', 'Delete the last unlocked character'],
+        ['ESC', 'Quit'],
+        ['WPM', '(correct characters / 5) / configured minutes'],
+      ],
+    },
+    {
+      title: 'Spaceship game',
+      items: [
+        ['Letter keys', 'Lock onto and type approaching words'],
+        ['Backspace', 'Undo the last typed character'],
+        ['Complete a word', 'Ship fires a laser and the word explodes'],
+        ['Word reaches ship', 'Game over'],
         ['ESC', 'Quit'],
       ],
     },
@@ -64,18 +70,9 @@ const HELP = {
       title: 'Results',
       items: [
         ['Enter', 'Play another round'],
+        ['m', 'Return to the splash menu'],
         ['?', 'Show this help menu'],
         ['q', 'Quit'],
-      ],
-    },
-    {
-      title: 'Scoring & rules',
-      items: [
-        ['Timed test', 'Timer starts on first keypress and ends when time runs out'],
-        ['WPM', '(correct characters / 5) / configured minutes'],
-        ['Accuracy', 'correct characters / characters typed'],
-        ['Colors', 'green = correct, red = incorrect, gray = not yet typed'],
-        ['Backspace lock', 'completed correct words cannot be deleted'],
       ],
     },
   ],
@@ -87,11 +84,22 @@ function wantsHelp(args) {
 
 function parseArgs(args) {
   let durationSeconds = DEFAULT_DURATION_SECONDS;
+  let mode = null; // 'test' | 'game' | null (menu)
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
 
     if (arg === '--help' || arg === '-h' || arg === 'help') {
+      continue;
+    }
+
+    if (arg === '--game' || arg === '-g') {
+      mode = 'game';
+      continue;
+    }
+
+    if (arg === '--test') {
+      mode = 'test';
       continue;
     }
 
@@ -113,9 +121,12 @@ function parseArgs(args) {
     }
 
     durationSeconds = parsed;
+    if (!mode) {
+      mode = 'test';
+    }
   }
 
-  return { durationSeconds };
+  return { durationSeconds, mode };
 }
 
 function colorize(text, code) {
@@ -150,44 +161,13 @@ class TypingTest {
     this.isWaitingForRestart = false;
     this.isShowingHelp = false;
     this.paragraphStart = 0;
+    this.onReturnToMenu = null;
   }
 
-  // Uniform random pick, (non-zipf)
-  pickRandomWord() {
-    return WORDS[Math.floor(Math.random() * WORDS.length)];
-  }
-
-  // Mirror getNextWord filters for standard english word mode:
-  // - don't repeat the previous two words
-  // - skip capital "I" when punctuation is off
-  // - skip words containing punctuation/numbers
-  shouldRegenerateWord(word, previousWord, previousWord2) {
-    const normalized = word.toLowerCase();
-    return (
-      previousWord === normalized ||
-      previousWord2 === normalized ||
-      word === 'I' ||
-      /[-=_+[\]{};'\\:"|,./<>?]/i.test(word) ||
-      /[0-9]/.test(word)
-    );
-  }
-
-  // Append one word using selection rules
+  // Append one word using the shared word-list selection rules
   appendWord() {
     const existing = this.sentence.length > 0 ? this.sentence.split(' ') : [];
-    let word = this.pickRandomWord();
-    const previousWord = existing[existing.length - 1]?.toLowerCase();
-    const previousWord2 = existing[existing.length - 2]?.toLowerCase();
-    let regenerationCount = 0;
-
-    while (
-      regenerationCount < WORD_REGEN_LIMIT &&
-      this.shouldRegenerateWord(word, previousWord, previousWord2)
-    ) {
-      regenerationCount++;
-      word = this.pickRandomWord();
-    }
-
+    const word = nextEligibleWord(existing);
     this.sentence = this.sentence.length === 0 ? word : `${this.sentence} ${word}`;
   }
 
@@ -211,24 +191,31 @@ class TypingTest {
     return ' '.repeat(pad) + text;
   }
 
-  // Title / landing screen
+  // Splash screen used as the mode menu
   showLandingPage() {
     this.clearScreen();
 
-    const prompt = 'Press Enter to start typing';
-    const durationHint = `${this.durationSeconds}s timed test`;
-    const hint = '? help   ·   ESC quit';
     const rows = stdout.rows || 24;
-    const topPad = Math.max(1, Math.floor((rows - TITLE_ART.length - 6) / 3));
+    const menuLines = [
+      '1  Timed typing test',
+      '2  Spaceship typing game',
+      '',
+      `Timed test length: ${this.durationSeconds}s  (change with --time)`,
+      '',
+      '? help   ·   ESC quit',
+    ];
+    const topPad = Math.max(1, Math.floor((rows - TITLE_ART.length - menuLines.length - 3) / 3));
 
     stdout.write('\n'.repeat(topPad));
     for (const line of TITLE_ART) {
       console.log(`\x1b[36m${this.centerLine(line)}\x1b[0m`);
     }
     console.log();
-    console.log(`\x1b[2m${this.centerLine(prompt)}\x1b[0m`);
-    console.log(`\x1b[2m${this.centerLine(durationHint)}\x1b[0m`);
-    console.log(`\x1b[2m${this.centerLine(hint)}\x1b[0m`);
+    console.log(this.centerLine('Choose a mode'));
+    console.log();
+    for (const line of menuLines) {
+      console.log(`\x1b[2m${this.centerLine(line)}\x1b[0m`);
+    }
   }
 
   // Full-screen help used during runtime
@@ -247,8 +234,8 @@ class TypingTest {
     return char === 'q' || char === 'Q' || char === '\u001b' || char === '\u0003';
   }
 
-  // Wait on the landing page until the user starts a test
-  waitForLandingEnter() {
+  // Wait on the splash menu until the user picks a mode
+  waitForMenuSelection() {
     return new Promise((resolve) => {
       const attachLandingHandler = () => {
         this.showLandingPage();
@@ -269,9 +256,15 @@ class TypingTest {
             return;
           }
 
-          if (char === '\r' || char === '\n') {
+          if (char === '1' || char === '\r' || char === '\n') {
             stdin.removeListener('data', onData);
-            resolve();
+            resolve('test');
+            return;
+          }
+
+          if (char === '2') {
+            stdin.removeListener('data', onData);
+            resolve('game');
           }
         };
 
@@ -421,7 +414,7 @@ class TypingTest {
         }
         return `\x1b[7m\x1b[31m${displayChar}\x1b[0m`;
       }
-      return `\x1b[7m\x1b[90m${char}\x1b[0m`;
+      return `\x1b[7m\x1b[37m${char}\x1b[0m`;
     }
 
     if (i < this.userInput.length) {
@@ -431,7 +424,7 @@ class TypingTest {
       return `\x1b[31m${displayChar}\x1b[0m`;
     }
 
-    return `\x1b[90m${char}\x1b[0m`;
+    return `\x1b[37m${char}\x1b[0m`;
   }
 
   // Display the current state
@@ -627,7 +620,7 @@ class TypingTest {
     console.log(`Characters: ${correctChars}/${totalChars} correct\n`);
 
     console.log('─────────────────────────────────────────────────────────────\n');
-    console.log("Press Enter to play again, '?' for help, or 'q' to exit\n");
+    console.log("Press Enter to play again, 'm' for menu, '?' for help, or 'q' to exit\n");
   }
 
   // Handle character input
@@ -644,10 +637,15 @@ class TypingTest {
       return;
     }
 
-    // Results screen: ignore accidental keypresses unless Enter / h / q
+    // Results screen: ignore accidental keypresses unless Enter / m / ? / q
     if (this.isWaitingForRestart) {
       if (char === '\r' || char === '\n') { // Detect Enter
         this.beginRound();
+      } else if (char && char.toLowerCase() === 'm') {
+        this.cleanup();
+        if (typeof this.onReturnToMenu === 'function') {
+          this.onReturnToMenu();
+        }
       } else if (this.isHelpKey(char)) {
         this.isShowingHelp = true;
         this.displayHelp();
@@ -735,16 +733,80 @@ class TypingTest {
     stdin.on('data', this.inputHandler);
   }
 
-  // Start the application from the landing page
-  async start() {
-    stdin.once('SIGINT', () => {
-      this.cleanup();
-      console.log('\n\nGoodbye!');
-      process.exit(0);
-    });
-
-    await this.waitForLandingEnter();
+  // Start a timed typing test (optionally after the splash menu)
+  start({ onReturnToMenu } = {}) {
+    this.onReturnToMenu = onReturnToMenu || null;
     this.beginRound();
+  }
+}
+
+async function showHelpOverlay() {
+  return new Promise((resolve) => {
+    stdout.write('\x1B[2J\x1B[0f');
+    writeHelp();
+    console.log('─────────────────────────────────────────────────────────────\n');
+    console.log('Press Enter or ESC to return\n');
+
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+
+    const onData = (char) => {
+      if (char === '\u0003') {
+        stdin.removeListener('data', onData);
+        process.exit(0);
+      }
+      if (char === '\r' || char === '\n' || char === '\u001b') {
+        stdin.removeListener('data', onData);
+        resolve();
+      }
+    };
+
+    stdin.on('data', onData);
+  });
+}
+
+async function runApp(options) {
+  const menuHost = new TypingTest(options.durationSeconds);
+
+  stdin.once('SIGINT', () => {
+    menuHost.cleanup();
+    console.log('\n\nGoodbye!');
+    process.exit(0);
+  });
+
+  const launchMode = async (mode) => {
+    if (mode === 'game') {
+      const game = new SpaceshipTypingGame();
+      game.start({
+        onShowHelp: async (done) => {
+          await showHelpOverlay();
+          done();
+        },
+        onReturnToMenu: () => {
+          runFromMenu();
+        },
+      });
+      return;
+    }
+
+    const test = new TypingTest(options.durationSeconds);
+    test.start({
+      onReturnToMenu: () => {
+        runFromMenu();
+      },
+    });
+  };
+
+  const runFromMenu = async () => {
+    const mode = await menuHost.waitForMenuSelection();
+    await launchMode(mode);
+  };
+
+  if (options.mode === 'game' || options.mode === 'test') {
+    await launchMode(options.mode);
+  } else {
+    await runFromMenu();
   }
 }
 
@@ -759,9 +821,9 @@ const options = parseArgs(args);
 if (options.error) {
   console.error(`Error: ${options.error}`);
   console.error('Try: node index.js --time 30');
+  console.error('Or:  node index.js --game');
   console.error('Or:  node index.js --help');
   process.exit(1);
 }
 
-const test = new TypingTest(options.durationSeconds);
-test.start();
+runApp(options);
