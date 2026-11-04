@@ -414,7 +414,7 @@ class TypingTest {
         }
         return `\x1b[7m\x1b[31m${displayChar}\x1b[0m`;
       }
-      return `\x1b[7m\x1b[90m${char}\x1b[0m`;
+      return `\x1b[7m\x1b[37m${char}\x1b[0m`;
     }
 
     if (i < this.userInput.length) {
@@ -424,7 +424,7 @@ class TypingTest {
       return `\x1b[31m${displayChar}\x1b[0m`;
     }
 
-    return `\x1b[90m${char}\x1b[0m`;
+    return `\x1b[37m${char}\x1b[0m`;
   }
 
   // Display the current state

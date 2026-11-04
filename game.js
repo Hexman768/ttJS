@@ -235,9 +235,9 @@ export class SpaceshipTypingGame {
           out += `\x1b[31m${char}\x1b[0m`;
         }
       } else if (isActive && i === typedLen) {
-        out += `\x1b[7m\x1b[90m${char}\x1b[0m`;
+        out += `\x1b[7m\x1b[37m${char}\x1b[0m`;
       } else {
-        out += `\x1b[90m${char}\x1b[0m`;
+        out += `\x1b[37m${char}\x1b[0m`;
       }
     }
 

@@ -82,7 +82,7 @@ The title splash is the mode menu:
 4. Color feedback:
    - **Green** = correctly typed
    - **Red** = incorrectly typed
-   - **Gray** = not yet typed
+   - **White** = not yet typed
 5. Finished lines stay visible; completing the paragraph swaps in a new one immediately
 6. When the timer hits zero, results show WPM, accuracy, and duration
 7. Press **Enter** to retry, **m** for the menu, **?** for help, or **q** to exit
